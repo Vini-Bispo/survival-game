@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="src/game.js" defer></script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-title">Game Survival</div>
+        <button id="startButton">Iniciar Jogo</button>
+        <canvas id= "gameCanvas"></canvas>
+        <div id="hud">
+            <span id="bulletCount">Balas: 0</span>
+            <span id="livesCount">Vidas: 3</span>
+            <button id="reloadButton">Recarregar</button>
+            <ul>
+                <li>W - Cima</li>
+                <li>A - Esquerda</li>
+                <li>S - Baixo</li>
+                <li>D - Direita</li>
+                <li>Espaço - Atirar</li>
+                <li>R - Recarregar</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- <div id="startScreen">
+        <h1>Sobrevivência</h1>
+        <button id="startButton">Iniciar Jogo</button>
+    </div> -->
+
+    <div id="gameOverScreen" class="hidden">
+        <h1>Game Over</h1>
+        <button id="restartButton">Reiniciar</button>
+    </div>
+</body> 
+</html>
