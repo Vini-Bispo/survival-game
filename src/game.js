@@ -5,6 +5,15 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const startButton = document.getElementById('startButton');
 
+// VER LÓGICA DE PAUSAR E REINICIAR O JOGO
+// const pauseScreen = document.getElementById('pauseScreen');
+// const resumeButton = document.getElementById('resumeButton');
+const restartButton = document.getElementById('restartButton');
+const gameOverScreen = document.getElementById('gameOverScreen');
+//FIM DA LÓGICA DE PAUSAR E REINICIAR O JOGO
+
+
+// Configurações do Canvas
 canvas.width = 896;
 canvas.height = 704;
 
@@ -16,6 +25,11 @@ const MAX_BALAS = 6;
 let balasDisponiveis = MAX_BALAS;
 let recarregando = false;
 let playerLives = 3; // Vidas do jogador
+let score = 0;
+let fase = 1; // Fase inicial
+const MAX_FASE = 3; // Fase máxima
+// let paused = false; // Variável para controlar o estado de pausa
+let spawnIntervalId = null; // Variável para armazenar o ID do intervalo de spawn
 
 //Player
 const player = { 
@@ -66,12 +80,63 @@ window.addEventListener('keyup', function(e){
 
 document.getElementById('reloadButton').addEventListener('click', recarregar);
 
+//TESTAR O BOTÃO DE PAUSAR E REINICIAR
+
+// window.addEventListener('keydown', function(e) {
+//     if (e.key === 'Escape') {
+//         paused = !paused; // Alterna o estado de pausa
+//         if (paused) {
+//             pauseScreen.classList.remove('hidden'); // Mostra a tela de pausa
+//         } else {
+//             pauseScreen.classList.add('hidden'); // Esconde a tela de pausa
+//             requestAnimationFrame(gameLoop); // Retorna ao loop do jogo
+//         }
+//     }
+// });
+
+// document.getElementById('restartButtonPause').addEventListener('click', function() {
+//     location.reload(); // Reinicia o jogo
+// });
+// document.getElementById('restartButtonGameOver').addEventListener('click', function() {
+//     location.reload(); // Reinicia o jogo
+// });
+
+// resumeButton.addEventListener('click', function() {
+//     paused = false; // Retorna ao estado normal
+//     pauseScreen.classList.add('hidden'); // Esconde a tela de pausa
+//     requestAnimationFrame(gameLoop); // Retorna ao loop do jogo
+// });
+
+// // Função para reiniciar o jogo
+// function reiniciarJogo() {
+//     playerLives = 3; // Reinicia as vidas do jogador
+//     score = 0; // Reinicia a pontuação
+//     fase = 1; // Reinicia a fase
+//     balasDisponiveis = MAX_BALAS; // Reinicia as balas disponíveis
+//     enemies.length = 0; // Limpa os inimigos
+//     bullets.length = 0; // Limpa as balas
+//     gameStarted = false; // Reinicia o estado do jogo
+//     gameOverScreen.style.display = 'none'; // Esconde a tela de Game Over
+// }
+
+// restartButton.addEventListener('click', function() {
+//     reiniciarJogo(); // Reinicia o jogo
+//     startButton.style.display = 'block'; // Mostra o botão de iniciar
+//     gameOverScreen.style.display = 'none'; // Esconde a tela de Game Over
+// });
+
+//FIM DO TESTE DO BOTÃO DE PAUSAR E REINICIAR
+
 // Função para atualizar o HUD (Heads-Up Display)
 function atualizarHud() {
     const contadorBalas = document.getElementById('bulletCount');
     contadorBalas.textContent = `Balas: ${balasDisponiveis}`;
     const vidasJogador = document.getElementById('livesCount');
     vidasJogador.textContent = `Vidas: ${playerLives}`;
+    const scoreHud = document.getElementById('scoreCount');
+    if (scoreHud) scoreHud.textContent = `Pontuação: ${score}`;
+    const faseHud = document.getElementById('faseCount');
+    if (faseHud) faseHud.textContent = `Fase: ${fase}`;
 }
 
 // Função para criar uma bala na direção da seta pressionada
@@ -190,6 +255,7 @@ function checarColisao(){
 }
 
 // Os inimigos devem se mover em direção ao jogador.
+//Função que gerencia o movimento dos inimigos
 function updateEnemies() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         let enemy = enemies[i];
@@ -229,6 +295,15 @@ function updateEnemies() {
                 // Remove a bala e o inimigo atingido
                 bullets.splice(j, 1);
                 enemies.splice(i, 1);
+                score++; // Aumenta a pontuação
+                atualizarHud();
+
+                if (score % 100 === 0 && fase < MAX_FASE) {
+                    fase++; // Aumenta a fase a cada 100 pontos
+                    startSpawnEnemies(3000 - (fase * 500)); // Diminui o intervalo de spawn
+                    // alert(`Fase ${fase} Os inimigos estão mais rápidos!`);
+                    atualizarHud();
+                }
                 break;
             }
         }
@@ -249,10 +324,15 @@ function drawEnemies() {
     });
 }
 
+function startSpawnEnemies(interval) {
+    if (spawnIntervalId) clearInterval(spawnIntervalId); // Limpa o intervalo anterior
+    spawnIntervalId = setInterval(spawnEnemy, interval);
+}
+
 function gameOver() {
-    /*alert('Game Over!');
-    location.reload(); // Reinicia o jogo*/
-    document.getElementById('gameOverScreen').style.display = 'block';
+    // alert('Game Over!');
+    // location.reload(); // Reinicia o jogo
+    document.getElementById('gameOverScreen').classList.remove('hidden'); // Mostra a tela de Game Over
 }
 
 document.getElementById('restartButton').addEventListener('click', function() {
@@ -423,6 +503,16 @@ function draw() {
     });*/
     drawEnemies();
 
+    //Pausa display
+
+    // if (paused) {
+    //     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    //     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    //     ctx.fillStyle = '#fff';
+    //     ctx.font = '30px Arial';
+    //     ctx.fillText('Jogo Pausado', canvas.width / 2 - 70, canvas.height / 2);
+    // }
+
 }
 
 function gameLoop(timestamp) {
@@ -435,7 +525,7 @@ function gameLoop(timestamp) {
             lastTime = timestamp;
         }
     }*/
-    if (!gameStarted) {
+    if (!gameStarted){
         return; // Não faz nada se o jogo não tiver iniciado
     }
 
@@ -454,7 +544,7 @@ startButton.addEventListener('click', function () {
         gameStarted = true;
         gameLoop(); // Inicia o loop do jogo
         atualizarHud();
-        setInterval(spawnEnemy, 3000); // Inicia o spawn dos inimigos
+        startSpawnEnemies(3000); // Inicia o spawn dos inimigos
         startButton.style.display = 'none'; // Esconde o botão após começar
     }
 });
