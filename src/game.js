@@ -27,9 +27,20 @@ let recarregando = false;
 let playerLives = 3; // Vidas do jogador
 let score = 0;
 let fase = 1; // Fase inicial
-const MAX_FASE = 3; // Fase máxima
+const MAX_FASE = 4; // Fase máxima
 // let paused = false; // Variável para controlar o estado de pausa
 let spawnIntervalId = null; // Variável para armazenar o ID do intervalo de spawn
+let currentMap = 'Mapa-GameSurvival'; // Mapa atual
+
+//Objeto Boss
+let boss = null; // Inicializa o boss como null
+let bossSpawned = false; // Variável para controlar se o boss foi spawnado
+let bossMaxLife = 20;
+let bossLife = bossMaxLife; // Vida do boss
+const bossImageRight = new Image();
+bossImageRight.src = 'img/bossD.png'; // Caminho para a sprite do boss direita
+const bossImageLeft = new Image();
+bossImageLeft.src = 'img/bossE.png'; // Caminho para a sprite do boss esquerda
 
 //Player
 const player = { 
@@ -46,8 +57,11 @@ const player = {
 player.imageRight.src = 'img/personagemD.png'; // Caminho para a sprite da direita
 player.imageLeft.src = 'img/personagemE.png'; // Caminho para a sprite da esquerda
 
-const groundImage = new Image();
-groundImage.src = 'img/Mapa-GameSurvival.png'; // Caminho para a imagem do chão
+const groundImagePrincipal = new Image();
+groundImagePrincipal.src = 'img/Mapa-GameSurvival.png'; // Caminho para a imagem do chão
+
+const groundImageEscondido = new Image();
+groundImageEscondido.src = 'img/Mapa-Escondido.png'; // Caminho para a imagem do chão escondido
 
 /*const wallImage = new Image();
 wallImage.src = 'img/arbusto-sprite.png'; // Caminho para a imagem da parede*/
@@ -233,6 +247,22 @@ function spawnEnemy() {
     enemies.push(enemy);
 }
 
+// Função para spawnar o boss
+function spawnBoss() {
+    boss = {
+        x: canvas.width / 2 - 40, // metade da largura
+        y: 50,
+        width: 80,   // largura real da imagem
+        height: 120, // altura real da imagem
+        speed: 1.5, // Velocidade do boss
+        life: bossMaxLife,
+        imageLeft: bossImageLeft, // Imagem do boss virado para a esquerda
+        imageRight: bossImageRight, // Imagem do boss virado para a direita
+        direction: 'right', // Direção inicial do boss
+    };
+    bossSpawned = true; // Marca que o boss foi spawnado
+}
+
 function checarColisao(){
     for (let i = 0; i < enemies.length; i++) {
         const enemy = enemies[i];
@@ -299,10 +329,23 @@ function updateEnemies() {
                 atualizarHud();
 
                 if (score % 100 === 0 && fase < MAX_FASE) {
-                    fase++; // Aumenta a fase a cada 100 pontos
-                    startSpawnEnemies(3000 - (fase * 500)); // Diminui o intervalo de spawn
-                    // alert(`Fase ${fase} Os inimigos estão mais rápidos!`);
+                    fase++; // Aumenta a fase
+                    if (fase < MAX_FASE) { // Só gera inimigos até a fase 3
+                        startSpawnEnemies(3000 - (fase * 500));
+                    } else if (fase === MAX_FASE) {
+                        // Ao chegar na fase 4, para o spawn de inimigos
+                        if (spawnIntervalId) {
+                            clearInterval(spawnIntervalId);
+                        }
+                    }
                     atualizarHud();
+                }
+                // Quando chegar na fase 4 e não houver mais inimigos, chama o boss
+                if (fase === 4 && enemies.length === 0 && !bossSpawned) {
+                    if (spawnIntervalId){
+                        clearInterval(spawnIntervalId); // Limpa o intervalo de spawn
+                    }
+                    spawnBoss();
                 }
                 break;
             }
@@ -376,6 +419,50 @@ function update(){
         }
     }
 
+    if (player.x + player.width >= canvas.width && currentMap === 'Mapa-GameSurvival') {
+        // Se o jogador atingir a borda direita do mapa, muda para o mapa escondido
+        currentMap = 'Mapa-Escondido';
+        player.x = 1; // Reseta a posição do jogador
+        player.y = 300; // Reseta a posição do jogador
+    }
+    // Se quiser voltar para o mapa principal ao encostar no limite esquerdo:
+    else if (player.x <= 0 && currentMap === 'Mapa-Escondido') {
+        currentMap = 'Mapa-GameSurvival';
+        player.x = canvas.width - player.width - 1; // Coloca no lado direito do mapa principal
+    }
+
+    // Verifica se o boss deve ser spawnado
+    if (bossSpawned && boss) {
+        // Movimento simples em direção ao jogador
+        let dx = player.x - boss.x;
+        let dy = player.y - boss.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist > 0) {
+            boss.x += (dx / dist) * boss.speed;
+            boss.y += (dy / dist) * boss.speed;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                boss.direction = dx > 0 ? 'right' : 'left';
+            }
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            let bullet = bullets[j];
+            if (
+                bullet.x < boss.x + boss.width &&
+                bullet.x + bullet.radius > boss.x &&
+                bullet.y < boss.y + boss.height &&
+                bullet.y + bullet.radius > boss.y
+            ) {
+                bullets.splice(j, 1);
+                boss.life--;
+                if (boss.life <= 0) {
+                    bossSpawned = false;
+                    // Vitória! Você pode mostrar uma tela de parabéns aqui
+                    // alert('Você derrotou o Boss!');
+                }
+            }
+        }
+    }
 }
 
 
@@ -413,20 +500,23 @@ let currentScene ={
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Desenha o chão
-    /*ctx.fillStyle = '#008000';
-    currentScene.ground.forEach(ground => {
-        ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
-    });*/
-    currentScene.ground.forEach(ground => {
-        ctx.drawImage(
-            groundImage, 
-            ground.x, 
-            ground.y, 
-            ground.width, 
-            ground.height
-        );
-    });
+    if (currentMap === 'Mapa-GameSurvival') {
+        ctx.drawImage(groundImagePrincipal, 0, 0, canvas.width, canvas.height);
+    } else if (currentMap === 'Mapa-Escondido') {
+        // Aqui você pode desenhar outro mapa, se necessário
+        ctx.drawImage(groundImageEscondido, 0, 0, canvas.width, canvas.height);
+    }
+
+
+    // currentScene.ground.forEach(ground => {
+    //     ctx.drawImage(
+    //         groundImagePrincipal, 
+    //         ground.x, 
+    //         ground.y, 
+    //         ground.width, 
+    //         ground.height
+    //     );
+    // });
 
     // Desenha as paredes
     /*ctx.fillStyle = '#0000ff';
@@ -453,29 +543,53 @@ function draw() {
         // Desenha o frame para a direita
         ctx.drawImage(
             player.imageRight,
-            player.x,// Coordenada X de origem na spritesheet
-            player.y, // Coordenada Y de origem na spritesheet
-            //50, // Largura do frame
-            //40, // Altura do frame
-            //player.x, // Posição X no canvas
-            //player.y, // Posição Y no canvas
-            player.width, // Largura no canvas
-            player.height // Altura no canvas
+            player.x,
+            player.y,
+            player.width,
+            player.height
         );
     } else if (player.direction === 'left') {
         // Desenha o frame para a esquerda
         ctx.drawImage(
             player.imageLeft,
-            player.x, // Coordenada X de origem na spritesheet (segundo frame)
-            player.y, // Coordenada Y de origem na spritesheet
-            //50, // Largura do frame
-            //40, // Altura do frame
-            //player.x, // Posição X no canvas
-            //player.y, // Posição Y no canvas
-            player.width, // Largura no canvas
-            player.height // Altura no canvas
+            player.x,
+            player.y,
+            player.width,
+            player.height
         );
     }
+
+    if (bossSpawned && boss) {
+        if (boss.direction === 'right') {
+            ctx.drawImage(
+                boss.imageRight,
+                boss.x,
+                boss.y,
+                boss.width,
+                boss.height
+            );
+        } else if (boss.direction === 'left') {
+            ctx.drawImage(
+                boss.imageLeft,
+                boss.x,
+                boss.y,
+                boss.width,
+                boss.height
+            );
+        }
+        // Barra de vida do boss
+        let barWidth = boss.width;
+        let barHeight = 12;
+        let lifePercent = boss.life / bossMaxLife;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(boss.x, boss.y - 18, barWidth, barHeight);
+        ctx.fillStyle = "#ff0000";
+        ctx.fillRect(boss.x, boss.y - 18, barWidth * lifePercent, barHeight);
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(boss.x, boss.y - 18, barWidth, barHeight);
+    }
+
+    
 
     /*if (player.direction === 'right') {
         ctx.drawImage(player.image, 100, 0, 50, 40, player.x, player.y, player.width, player.height);
